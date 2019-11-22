@@ -1,31 +1,22 @@
-const { ApolloServer, UserInputError, gql } = require('apollo-server')
-const uuid = require('uuid/v1')
+const config = require('./utils/config')
+const logger = require('./utils/logger')
 
-let authors = [
-  {
-    name: 'Robert Martin',
-    id: "afa51ab0-344d-11e9-a414-719c6709cf3e",
-    born: 1952,
-  },
-  {
-    name: 'Martin Fowler',
-    id: "afa5b6f0-344d-11e9-a414-719c6709cf3e",
-    born: 1963
-  },
-  {
-    name: 'Fyodor Dostoevsky',
-    id: "afa5b6f1-344d-11e9-a414-719c6709cf3e",
-    born: 1821
-  },
-  { 
-    name: 'Joshua Kerievsky', // birthyear not known
-    id: "afa5b6f2-344d-11e9-a414-719c6709cf3e",
-  },
-  { 
-    name: 'Sandi Metz', // birthyear not known
-    id: "afa5b6f3-344d-11e9-a414-719c6709cf3e",
-  },
-]
+const { ApolloServer, UserInputError, gql } = require('apollo-server')
+const mongoose = require('mongoose')
+const Author = require('./models/author')
+const Book = require('./models/book')
+
+mongoose.set('useFindAndModify', false)
+
+logger.info('connecting to', config.MONGODB_URI)
+
+mongoose.connect(config.MONGODB_URI, { useNewUrlParser: true })
+  .then(() => {
+    logger.info('connected to MongoDB')
+  })
+  .catch((error) => {
+    logger.error('error connection to MongoDB:', error.message)
+  })
 
 /*
  * It would be more sensible to assosiate book and the author by saving 
@@ -89,9 +80,9 @@ const typeDefs = gql`
   type Book {
     title: String!
     published: Int!
-    author: String!
+    author: Author!
+    genres: [String!]!
     id: ID!
-    genres: [String]
   }
   type Author {
     name: String!
@@ -125,24 +116,22 @@ const typeDefs = gql`
 
 const resolvers = {
   Query: {
-    allBooks: (root, args) => {
+    allBooks: async (root, args) => {
         console.log('args', args)
+        const books = await Book.find({}).populate('author', { name: 1, })
+
         if (args.author && args.genre) {
-            return books.filter(book => book.author === args.author).filter(book => book.genres.includes(args.genre))
+            return books.filter(book => book.author.name === args.author).filter(book => book.genres.includes(args.genre))
         } else if (args.author) {
-            return books.filter(book => book.author === args.author)
-        }
-        else if (args.genre) {
+            return books.filter(book => book.author.name === args.author)
+        } else if (args.genre) {
             return books.filter(book => book.genres.includes(args.genre))
         }
         return books
     },
-    bookCount: () => books.length,
-    authorCount: () => authors.length,
-    //allBooks: () => books,
-    allAuthors: () => {
-        return authors
-    }
+    bookCount: () => Book.collection.countDocuments(),
+    authorCount: () => Author.collection.countDocuments(),
+    allAuthors: () => Author.find({})
   },
   Author: {
     bookCount: (root) => {

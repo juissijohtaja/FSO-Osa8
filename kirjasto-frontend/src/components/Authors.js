@@ -9,7 +9,7 @@ const Authors = ({ result, show }) => {
   }
 
   const authors = result.data.allAuthors
-  console.log('authors', authors)
+  console.log('Authors page: authors', authors)
 
   return (
     <div>

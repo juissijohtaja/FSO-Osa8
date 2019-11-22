@@ -10,6 +10,7 @@ const Books = ({ result, show }) => {
   }
 
   const books = result.data.allBooks
+  //const books = []
   console.log('books', books)
 
   return (
@@ -29,7 +30,7 @@ const Books = ({ result, show }) => {
           {books.map(a =>
             <tr key={a.title}>
               <td>{a.title}</td>
-              <td>{a.author}</td>
+              <td>{a.author.name}</td>
               <td>{a.published}</td>
             </tr>
           )}

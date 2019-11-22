@@ -25,7 +25,7 @@ const ALL_BOOKS = gql`
   allBooks {
     title
     published
-    author
+    author { name }
   }
 }
 `
@@ -68,6 +68,7 @@ const App = () => {
 
   const authors = useQuery(ALL_AUTHORS)
   const books = useQuery(ALL_BOOKS)
+  console.log('books', books)
 
   const [addBook] = useMutation(CREATE_BOOK, {
     //onError: handleError,
