@@ -6,7 +6,9 @@ import BornForm from './components/BornForm'
 
 
 import { gql } from 'apollo-boost'
-import { Query, ApolloConsumer, Mutation } from 'react-apollo'
+//import { Query, ApolloConsumer, Mutation } from 'react-apollo'
+import { useQuery, useMutation } from '@apollo/react-hooks'
+
 
 const ALL_AUTHORS = gql`
 {
@@ -64,6 +66,19 @@ const App = () => {
   const [page, setPage] = useState('authors')
   console.log('page', page)
 
+  const authors = useQuery(ALL_AUTHORS)
+  const books = useQuery(ALL_BOOKS)
+
+  const [addBook] = useMutation(CREATE_BOOK, {
+    //onError: handleError,
+    refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }]
+  })
+
+  const [editAuthor] = useMutation(EDIT_AUTHOR, {
+    //onError: handleError,
+    refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }]
+  })
+
   return (
     <div>
       <div>
@@ -72,29 +87,10 @@ const App = () => {
         <button onClick={() => setPage('add')}>add book</button>
       </div>
       
-      <Query query={ALL_AUTHORS}>
-        {(result) => <Authors result={result} show={page === 'authors'} />}
-      </Query>
-
-      <Query query={ALL_BOOKS}>
-        {(result) => <Books result={result} show={page === 'books'}  />}
-      </Query>
-
-      <Mutation mutation={CREATE_BOOK} refetchQueries={[{ query: ALL_BOOKS }, { query: ALL_AUTHORS }]}>
-        {(addBook) =>
-          <NewBook
-            addBook={addBook} show={page === 'add'}
-          />
-        }
-      </Mutation>
-
-      <Mutation mutation={EDIT_AUTHOR} refetchQueries={[{ query: ALL_BOOKS }, { query: ALL_AUTHORS }]}>
-        {(editAuthor) =>
-          <BornForm editAuthor={editAuthor} show={page === 'authors'} />
-        }
-      </Mutation> 
-
-      
+      <Authors result={authors} show={page === 'authors'} />
+      <Books result={books} show={page === 'books'}  />
+      <NewBook addBook={addBook} show={page === 'add'} />
+      <BornForm editAuthor={editAuthor} result={authors} show={page === 'authors'} />     
 
     </div>
   )

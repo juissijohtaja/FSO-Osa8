@@ -7,6 +7,13 @@ const BornForm = (props) => {
     if (!props.show) {
         return null
       }
+
+    if (props.result.loading) {
+    return <div>loading...</div>
+    }
+
+    const authors = props.result.data.allAuthors
+    console.log('BornForm authors', authors)
   
     const submit = async (e) => {
       e.preventDefault()
@@ -24,12 +31,11 @@ const BornForm = (props) => {
       <div>
         <h2>Set birth year</h2>
         <form onSubmit={submit}>
-          <div>
-            name <input
-              value={name}
-              onChange={({ target }) => setName(target.value)}
-            />
-          </div>
+        <select value={name} onChange={({ target }) => setName(target.value)}>
+          {authors.map(a =>
+              <option key={a.name} value={a.name}>{a.name}</option>
+          )}
+          </select>
           <div>
             born <input
               value={born}
