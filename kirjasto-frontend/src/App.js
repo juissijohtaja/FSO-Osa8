@@ -31,7 +31,7 @@ const ALL_BOOKS = gql`
 `
 
 const CREATE_BOOK = gql`
-mutation createBook($title: String!, $published: Int!, $author: String!, $genres: [String]) {
+mutation createBook($title: String!, $published: Int, $author: String, $genres: [String]) {
   addBook(
     title: $title,
     published: $published,
@@ -40,7 +40,7 @@ mutation createBook($title: String!, $published: Int!, $author: String!, $genres
   ) {
     title
     published
-    author
+    author { name }
     genres
   }
 }
@@ -68,7 +68,7 @@ const App = () => {
 
   const authors = useQuery(ALL_AUTHORS)
   const books = useQuery(ALL_BOOKS)
-  console.log('books', books)
+  //console.log('books', books)
 
   const [addBook] = useMutation(CREATE_BOOK, {
     //onError: handleError,

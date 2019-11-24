@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 
 const BornForm = (props) => {
+    
     const [name, setName] = useState('')
     const [born, setBorn] = useState('')
 
@@ -13,18 +14,25 @@ const BornForm = (props) => {
     }
 
     const authors = props.result.data.allAuthors
-    console.log('BornForm authors', authors)
+    const defaultName = authors[0].name
+    if (name === '') {
+      setName(defaultName)
+    }
+    console.log('BornForm name', name)
   
     const submit = async (e) => {
       e.preventDefault()
-      const setBornTo = born
-  
-      await props.editAuthor({
-        variables: { name, setBornTo }
-      })
-  
-      setName('')
-      setBorn('')
+      
+      if (isNaN(born)) {
+        console.log('Error: born is not a number!')
+      } else {
+        const setBornTo = Number(born)
+        await props.editAuthor({
+          variables: { name, setBornTo }
+        })
+        setName('')
+        setBorn('')
+      }
     }
   
     return (
@@ -39,7 +47,7 @@ const BornForm = (props) => {
           <div>
             born <input
               value={born}
-              onChange={({ target }) => setBorn(Number(target.value))}
+              onChange={({ target }) => setBorn(target.value)}
             />
           </div>
           <button type='submit'>Update author</button>

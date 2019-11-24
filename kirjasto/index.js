@@ -24,71 +24,21 @@ mongoose.connect(config.MONGODB_URI, { useNewUrlParser: true })
  * For simplicity we however save the author name.
 */
 
-let books = [
-  {
-    title: 'Clean Code',
-    published: 2008,
-    author: 'Robert Martin',
-    id: "afa5b6f4-344d-11e9-a414-719c6709cf3e",
-    genres: ['refactoring']
-  },
-  {
-    title: 'Agile software development',
-    published: 2002,
-    author: 'Robert Martin',
-    id: "afa5b6f5-344d-11e9-a414-719c6709cf3e",
-    genres: ['agile', 'patterns', 'design']
-  },
-  {
-    title: 'Refactoring, edition 2',
-    published: 2018,
-    author: 'Martin Fowler',
-    id: "afa5de00-344d-11e9-a414-719c6709cf3e",
-    genres: ['refactoring']
-  },
-  {
-    title: 'Refactoring to patterns',
-    published: 2008,
-    author: 'Joshua Kerievsky',
-    id: "afa5de01-344d-11e9-a414-719c6709cf3e",
-    genres: ['refactoring', 'patterns']
-  },  
-  {
-    title: 'Practical Object-Oriented Design, An Agile Primer Using Ruby',
-    published: 2012,
-    author: 'Sandi Metz',
-    id: "afa5de02-344d-11e9-a414-719c6709cf3e",
-    genres: ['refactoring', 'design']
-  },
-  {
-    title: 'Crime and punishment',
-    published: 1866,
-    author: 'Fyodor Dostoevsky',
-    id: "afa5de03-344d-11e9-a414-719c6709cf3e",
-    genres: ['classic', 'crime']
-  },
-  {
-    title: 'The Demon',
-    published: 1872,
-    author: 'Fyodor Dostoevsky',
-    id: "afa5de04-344d-11e9-a414-719c6709cf3e",
-    genres: ['classic', 'revolution']
-  },
-]
+
 
 const typeDefs = gql`
   type Book {
     title: String!
-    published: Int!
-    author: Author!
-    genres: [String!]!
+    published: Int
+    author: Author
+    genres: [String!]
     id: ID!
   }
   type Author {
     name: String!
     id: ID!
     born: Int
-    bookCount: Int!
+    bookCount: Int
   }
   type Query {
     bookCount: Int!
@@ -99,14 +49,14 @@ const typeDefs = gql`
   type Mutation {
     addBook(
       title: String!
-      published: Int!
-      author: String!
+      published: Int
+      author: String
       genres: [String]
     ): Book
     addAuthor(
         name: String!
         born: Int
-      ): Book
+      ): Author
     editAuthor(
         name: String!
         setBornTo: Int!
@@ -134,51 +84,75 @@ const resolvers = {
     allAuthors: () => Author.find({})
   },
   Author: {
-    bookCount: (root) => {
-        const counter = books.filter(i => i.author.match(root.name))
-        //console.log('book counter', counter.length)
-        return counter.length
+    bookCount: async (root) => {
+      const books = await Book.find({}).populate('author', { name: 1, })
+      const counter = books.filter(i => i.author.name.match(root.name))
+      return counter.length
     }
   },
   Mutation: {
-    addBook: (root, args) => {
-      if (books.find(b => b.title === args.title)) {
-        throw new UserInputError('Title must be unique', {
-          invalidArgs: args.title,
-        })
-      }
-      const book = { ...args, id: uuid() }
-      books = books.concat(book)
-      const authorCheck = authors.filter(author => author.name.match(args.author))
-      console.log('authorCheck', authorCheck)
-      if (authorCheck.length === 1) {
-        console.log('Name exists')
-      } else {
-          console.log('New Author')
-          const author = { name: args.author, id: uuid(), born: null }
-          authors = authors.concat(author)
-      }
-      return book
-    },
-    addAuthor: (root, args) => {
-        if (authors.find(a => a.name === args.name)) {
-          throw new UserInputError('Name must be unique', {
-            invalidArgs: args.name,
+    addBook: async (root, args) => {
+      try {
+        let authorObj = await Author.findOne({ name: args.author })
+        console.log('authorObj', authorObj)
+        console.log('args.author', args.author)
+        if (!authorObj) {
+          console.log('Uusi author')
+          const author = new Author({
+            name: args.author,
+            born: null
+          })
+          authorObj = await author.save()
+        }
+        console.log('authorObj after', authorObj)
+        const books = await Book.find({})
+        if (books.find(b => b.title === args.title)) {
+          throw new UserInputError('Title must be unique', {
+            invalidArgs: args.title,
           })
         }
-        const author = { ...args, id: uuid(), born: null }
-        authors = authors.concat(author)
-        return author
-      },
-    editAuthor: (root, args) => {
-        const author = authors.find(a => a.name === args.name)
-        if (!author) {
-          return null
-        }
-        const updatedAuthor = { ...author, born: args.setBornTo }
-        authors = authors.map(a => a.name === args.name ? updatedAuthor : a)
-        return updatedAuthor
-      },  
+
+        const book = new Book({ ...args, author: authorObj._id })
+        console.log('book', book)
+        const savedBook = await book.save()
+        console.log('savedBook', savedBook)
+        const modBook = await Book.findOne({ title: args.title }).populate('author', { name: 1, })
+        console.log('modBook', modBook)
+        return modBook
+
+      } catch (error) {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
+        })
+      }      
+    },
+    addAuthor: async (root, args) => {
+      console.log('addAuthor args', args)
+      const authorObj = await Author.findOne({ name: args.name })
+      console.log('authorObj', authorObj)
+      if (authorObj) {
+        throw new UserInputError('Name must be unique', {
+          invalidArgs: args.name,
+        })
+      }
+      const author = new Author({
+        name: args.name,
+        born: null
+      })
+      const newAuthor = await author.save()
+      return newAuthor
+    },
+    editAuthor: async (root, args) => {
+      console.log('editAuthor args', args)
+      const author = await Author.findOne({ name: args.name })
+      console.log('author', author)
+      if (!author) {
+        return null
+      }
+      author.born = args.setBornTo
+      console.log('author', author)
+      return author.save()
+    },  
   }
 }
 
