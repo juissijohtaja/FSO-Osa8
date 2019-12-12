@@ -16,15 +16,20 @@ const NewBook = (props) => {
 
     console.log('add book...')
     //setPublished(Number(published))
-    await props.addBook({
-      variables: { title, published, author, genres }
-    })
-
-    setTitle('')
-    setPublished('')
-    setAuhtor('')
-    setGenres([])
-    setGenre('')
+    if (title && published && author) {
+      await props.addBook({
+        variables: { title, published, author, genres }
+      })
+  
+      setTitle('')
+      setPublished('')
+      setAuhtor('')
+      setGenres([])
+      setGenre('')
+    } else {
+      alert("Error: title, author or year missing")
+    }
+    
   }
 
   const addGenre = () => {

@@ -8,7 +8,8 @@ const Book = require('./models/book')
 const User = require('./models/user')
 
 const jwt = require('jsonwebtoken')
-const JWT_SECRET = 'SOIKKELI'
+const JWT_SECRET = config.JWT_SECRET
+console.log('JWT_SECRET', JWT_SECRET)
 
 mongoose.set('useFindAndModify', false)
 
