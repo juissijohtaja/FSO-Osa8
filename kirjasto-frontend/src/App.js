@@ -4,21 +4,28 @@ import Books from './components/Books'
 import NewBook from './components/NewBook'
 import BornForm from './components/BornForm'
 import LoginForm from './components/LoginForm'
-
+import Recommended from './components/Recommended'
 
 import { gql } from 'apollo-boost'
 //import { Query, ApolloConsumer, Mutation } from 'react-apollo'
 import { useQuery, useMutation, useApolloClient } from '@apollo/react-hooks'
 
+const AUTHOR_DETAILS = gql`
+fragment AuthorDetails on Author {
+  id
+  name
+  born
+  bookCount
+}
+`
 
 const ALL_AUTHORS = gql`
 {
   allAuthors {
-    name
-    born
-    bookCount
+    ...AuthorDetails
   }
 }
+${AUTHOR_DETAILS}  
 `
 
 const ALL_BOOKS = gql`
@@ -28,6 +35,15 @@ const ALL_BOOKS = gql`
     published
     author { name }
     genres
+  }
+}
+`
+
+const ME = gql`
+{
+  me {
+    username
+    favoriteGenre
   }
 }
 `
@@ -66,12 +82,6 @@ const LOGIN = gql`
   }
 `
 
-/* client.query({ ALL_AUTHORS })
-  .then((response) => {
-    console.log(response.data)
-  }) */
-
-
 const App = () => {
   const [token, setToken] = useState(null)
   const [errorMessage, setErrorMessage] = useState(null)
@@ -82,7 +92,10 @@ const App = () => {
   const client = useApolloClient()
   const authors = useQuery(ALL_AUTHORS)
   const books = useQuery(ALL_BOOKS)
-  //console.log('books', books)
+  const loggedUser = useQuery(ME)
+  //const loggedUser = userInfo.data.me
+
+  console.log('loggedUser', loggedUser)
 
   const handleError = (error) => {
     setErrorMessage(error.graphQLErrors[0].message)
@@ -94,33 +107,12 @@ const App = () => {
   const [addBook] = useMutation(CREATE_BOOK, {
     onError: handleError,
     refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }]
-
-    /* update: (store, response) => {
-      const dataInStoreBooks = store.readQuery({ query: ALL_BOOKS })
-      const dataInStoreAuthors = store.readQuery({ query: ALL_AUTHORS })
-      console.log('dataInStore', dataInStoreBooks)
-      console.log('dataInStore2', dataInStoreAuthors)
-      console.log('response.data.addBook', response.data.addBook)
-      dataInStoreBooks.allBooks.push(response.data.addBook)
-      dataInStoreAuthors.allAuthors.push(response.data.addBook.author)
-      store.writeQuery({
-        query: ALL_BOOKS,
-        data: dataInStoreBooks
-      })
-      store.writeQuery({
-        query: ALL_AUTHORS,
-        data: dataInStoreAuthors
-      })
-    } */
-
   })
 
   const [editAuthor] = useMutation(EDIT_AUTHOR, {
     onError: handleError,
     refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }]
-  })
-
-  
+  })  
 
   const [login] = useMutation(LOGIN, {
     onError: handleError
@@ -132,23 +124,7 @@ const App = () => {
     client.resetStore()
     alert("Logout successful")
     setPage('authors')
-  }
-
-
-  /* if (!token) {
-    return (
-      <div>
-        {errorNotification()}
-        <h2>Login</h2>
-        <LoginForm
-          login={login}
-          setToken={(token) => setToken(token)}
-        />
-      </div>
-    )
-  }
- */
-  
+  }  
 
   return (
     <div>
@@ -158,17 +134,21 @@ const App = () => {
         
 
         {token
-                  ? <span><button onClick={() => setPage('add')}>add book</button> <button onClick={logout}>logout</button></span>
-                  : <button onClick={() => setPage('login')}>login</button>
-                }
+          ? <span>
+            <button onClick={() => setPage('recommended')}>recommended</button>
+            <button onClick={() => setPage('add')}>add book</button> 
+            <button onClick={logout}>logout</button>
+          </span>
+          : <button onClick={() => setPage('login')}>login</button>
+        }
 
       </div>
       
       <Authors result={authors} show={page === 'authors'} />
       <Books result={books} show={page === 'books'}  />
+      <Recommended result={books} loggedUser={loggedUser} show={page === 'recommended'}  />
       <NewBook addBook={addBook} show={page === 'add'} />
       {token ? <BornForm editAuthor={editAuthor} result={authors} show={page === 'authors'} /> : <div></div> }
-      
       <LoginForm setPage={setPage} errorMessage={errorMessage} login={login} setToken={(token) => setToken(token)} show={page === 'login'} />
 
     </div>
