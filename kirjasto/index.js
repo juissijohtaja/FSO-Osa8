@@ -39,6 +39,7 @@ const typeDefs = gql`
     id: ID!
     born: Int
     bookCount: Int
+    authorOf: [Book]
   }
   type User {
     username: String!
@@ -49,7 +50,7 @@ const typeDefs = gql`
     value: String!
   }
   type Query {
-    bookCount: Int!
+    allBooksCount: Int!
     authorCount: Int!
     allBooks(author: String, genre: String): [Book]!
     allAuthors: [Author]!
@@ -99,9 +100,9 @@ const resolvers = {
         }
         return books
     },
-    bookCount: () => Book.collection.countDocuments(),
+    allBooksCount: () => Book.collection.countDocuments(),
     authorCount: () => Author.collection.countDocuments(),
-    allAuthors: () => Author.find({}),
+    allAuthors: () => Author.find({}).populate('authorOf'),
     me: (root, args, context) => {
       console.log('query me', context.currentUser)
       return context.currentUser
@@ -109,9 +110,10 @@ const resolvers = {
   },
   Author: {
     bookCount: async (root) => {
-      const books = await Book.find({}).populate('author', { name: 1, })
-      const counter = books.filter(i => i.author.name.match(root.name))
-      return counter.length
+      //const books = await Book.find({}).populate('author', { name: 1, })
+      //const counter = books.filter(i => i.author.name.match(root.name))
+      //return counter.length
+      return root.authorOf.length
     }
   },
   Mutation: {
@@ -149,6 +151,12 @@ const resolvers = {
         console.log('savedBook', savedBook)
         const modBook = await Book.findOne({ title: args.title }).populate('author', { name: 1, })
         console.log('modBook', modBook)
+
+        // save book info to author
+        //authorObj.authorOf = []
+        authorObj.authorOf.push(savedBook.id)
+        console.log('author after', authorObj)
+        authorObj.save()
 
         pubsub.publish('BOOK_ADDED', { bookAdded: modBook })
 
