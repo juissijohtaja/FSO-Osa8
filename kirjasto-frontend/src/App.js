@@ -8,7 +8,7 @@ import Recommended from './components/Recommended'
 
 import { gql } from 'apollo-boost'
 //import { Query, ApolloConsumer, Mutation } from 'react-apollo'
-import { useQuery, useMutation, useApolloClient } from '@apollo/react-hooks'
+import { useQuery, useMutation, useSubscription ,useApolloClient } from '@apollo/react-hooks'
 
 const AUTHOR_DETAILS = gql`
 fragment AuthorDetails on Author {
@@ -28,15 +28,23 @@ const ALL_AUTHORS = gql`
 ${AUTHOR_DETAILS}  
 `
 
+const BOOK_DETAILS = gql`
+fragment BookDetails on Book {
+  id
+  title
+  published
+  author { name }
+  genres
+}
+` 
+
 const ALL_BOOKS = gql`
 {
   allBooks {
-    title
-    published
-    author { name }
-    genres
+    ...BookDetails
   }
 }
+${BOOK_DETAILS}  
 `
 
 const ME = gql`
@@ -56,6 +64,7 @@ mutation createBook($title: String!, $published: Int, $author: String, $genres: 
     author: $author,
     genres: $genres
   ) {
+    id
     title
     published
     author { name }
@@ -82,6 +91,16 @@ const LOGIN = gql`
   }
 `
 
+const BOOK_ADDED = gql`
+  subscription {
+    bookAdded {
+      ...BookDetails
+    }
+  }
+  
+${BOOK_DETAILS}
+`
+
 const App = () => {
   const [token, setToken] = useState(null)
   const [errorMessage, setErrorMessage] = useState(null)
@@ -93,9 +112,8 @@ const App = () => {
   const authors = useQuery(ALL_AUTHORS)
   const books = useQuery(ALL_BOOKS)
   const loggedUser = useQuery(ME)
-  //const loggedUser = userInfo.data.me
 
-  console.log('loggedUser', loggedUser)
+  //console.log('loggedUser', loggedUser)
 
   const handleError = (error) => {
     setErrorMessage(error.graphQLErrors[0].message)
@@ -104,9 +122,53 @@ const App = () => {
     }, 3000)
   }
 
+  const notify = (message) => {
+    setErrorMessage(message)
+    setTimeout(() => {
+      setErrorMessage(null)
+    }, 10000)
+  }
+
+  /* useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      console.log(subscriptionData)
+    }
+  }) */
+
+
+
+  const updateCacheWith = (addedBook) => {
+
+    const includedIn = (set, object) => {
+      console.log('updateCacheWith object', object)
+      return set.map(book => book.id).includes(object.id)
+    }
+
+    const dataInStore = client.readQuery({ query: ALL_BOOKS })
+    console.log('vertaus', !includedIn(dataInStore.allBooks, addedBook))
+    if (!includedIn(dataInStore.allBooks, addedBook)) {
+      client.writeQuery({
+        query: ALL_BOOKS,
+        data: { allBooks : dataInStore.allBooks.concat(addedBook) }
+      })
+    }
+  }
+
+  useSubscription(BOOK_ADDED, {
+    onSubscriptionData: ({ subscriptionData }) => {
+      const addedBook = subscriptionData.data.bookAdded
+      console.log(subscriptionData)
+      updateCacheWith(addedBook)
+      window.alert(`Book added: ${addedBook.title}`)
+    }
+  })
+
   const [addBook] = useMutation(CREATE_BOOK, {
     onError: handleError,
-    refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }]
+    //refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }]
+    update: (store, response) => {
+      updateCacheWith(response.data.addBook)
+    }
   })
 
   const [editAuthor] = useMutation(EDIT_AUTHOR, {
@@ -124,7 +186,7 @@ const App = () => {
     client.resetStore()
     alert("Logout successful")
     setPage('authors')
-  }  
+  }
 
   return (
     <div>
